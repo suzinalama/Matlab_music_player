@@ -1,0 +1,293 @@
+function varargout = ass1(varargin)
+
+gui_Singleton = 1;
+gui_State = struct('gui_Name',       mfilename, ...
+                   'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @ass1_OpeningFcn, ...
+                   'gui_OutputFcn',  @ass1_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , ...
+                   'gui_Callback',   []);
+if nargin && ischar(varargin{1})
+    gui_State.gui_Callback = str2func(varargin{1});
+end
+
+if nargout
+    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
+else
+    gui_mainfcn(gui_State, varargin{:});
+end
+% End initialization code - DO NOT EDIT
+
+
+% --- Executes just before ass1 is made visible.
+function ass1_OpeningFcn(hObject, eventdata, handles, varargin)
+% This function has no output args, see OutputFcn.
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% varargin   command line arguments to ass1 (see VARARGIN)
+
+
+%choosing of the default command line output for the ass1
+handles.output = hObject;
+
+%in order to span the whole gui, creation of axes is done
+background = axes('unit', 'normalized', 'position', [0 0 1 1]); 
+
+%inorder to import the background image and display is on axes
+image = imread('black.jpg');
+imagesc(image);
+
+
+%this prvents the plotting and turn off the axis over the background
+set(background,'handlevisibility','off','visible','off')
+
+%this command is used to check all the other uicontrols to make sure the
+%background image is behind
+uistack(background, 'bottom');
+
+% Updating the handles structure
+guidata(hObject, handles);
+
+
+% --- Outputs from this function are returned to the command line.
+function varargout = ass1_OutputFcn(hObject, eventdata, handles) 
+% varargout  cell array for returning output args (see VARARGOUT);
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% Get default command line output from handles structure
+varargout{1} = handles.output;
+
+
+% --- Executes on button press in Play.
+function Play_Callback(hObject, eventdata, handles)
+% hObject    handle to Play (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+set(handles.pl,'TimerFcn',{@timerCallback,handles.figure1}, 'TimerPeriod', 0.1);
+play(handles.pl);%inorder to play the song
+
+
+function timerCallback(hObject, event, handle)
+%inorder to get the handles structure
+handles = guidata(handle);
+% determining what the current value is 
+currentSample = get(hObject,'CurrentSample');
+% inorder to get all the data of the sound
+sound_data = handles.y(handles.atSample+1:currentSample);
+handles.atSample = currentSample;
+guidata(handle,handles);
+if currentSample > 1 
+    sliderVal = min(1.0,currentSample/length(handles.y));
+    set(handles.music_slider,'Value',sliderVal);
+end
+
+
+
+
+% --- Executes on slider movement.
+function music_slider_Callback(hObject, eventdata, handles)
+% hObject    handle to music_slider (see GCBO)
+
+
+% --- Executes during object creation, after setting all properties.
+function music_slider_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to music_slider (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+% --- Executes on button press in forward.
+function forward_Callback(hObject, eventdata, handles)
+% hObject    handle to forward (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+select_index =handles.select_index;%checking the select index
+forwarding =cellstr(handles.addresses);% taking the selected index from the addresses
+if (select_index + 1 > length(forwarding))%checking whether there is song after the selected index
+display('No Song to Forward');
+else 
+    handles.seleted_items = forwarding{select_index+1};%forwarding the song by adding 1 to the selected song
+    [y f]=audioread(handles.seleted_items);
+    handles.pl=audioplayer(y,f);
+    handles.select_index = select_index+1;
+    handles.y        = y';
+    handles.f      = f;
+    handles.time_in_second  = length(y)/f;
+    handles.atSample = 0;%starting from index 0
+    handles.pl=handles.pl;
+    guidata(hObject, handles);
+    set(handles.pl,'TimerFcn',{@timerCallback,handles.figure1}, 'TimerPeriod', 0.1);
+    plot(y);%plotting the selected audio
+    play(handles.pl);
+   
+end
+
+
+% --- Executes on button press in backward.
+function backward_Callback(hObject, eventdata, handles)
+% hObject    handle to backward (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+select_index =handles.select_index;
+backwarding =cellstr(handles.addresses);
+
+if (select_index - 1 < 1)%checking whehter there is any song before the selected song
+display('No Song to Backward');% displayed if there is any
+else 
+    stop(handles.pl);
+    set(handles.music_slider,'Value',0.0);
+    handles.seleted_items = backwarding{select_index-1};%handles index before the selected song
+    [y f]=audioread(handles.seleted_items);
+    handles.pl=audioplayer(y,f);
+    handles.y        = y';
+    handles.f      = f;
+    handles.time_in_second  = length(y)/f;
+    handles.atSample = 0;
+    handles.pl=handles.pl;
+    guidata(hObject, handles);
+    set(handles.pl,'TimerFcn',{@timerCallback,handles.figure1}, 'TimerPeriod', 0.1);
+    plot(y);
+    play(handles.pl);
+   
+end
+
+
+% --- Executes on slider movement.
+function volume_slider_Callback(hObject, eventdata, handles)
+pause(handles.pl);
+VolChange=get(handles.pl,'CurrentSample')+1;
+pause(handles.pl);
+[x, f]=audioread(handles.seleted_items);%reading the selected index
+volume1=get(handles.volume_slider,'value');%handles the volume slider of the player
+x=x(VolChange:end,:);% from the volume change to the last index of the volume slider
+handles.pl=audioplayer(x*volume1,f);%upddates the volume according to the sliding by the users
+set(handles.pl,'TimerFcn',{@timerCallback,handles.figure1}, 'TimerPeriod', 0.1);
+play(handles.pl);
+guidata(hObject, handles);
+
+
+
+% --- Executes during object creation, after setting all properties.
+function volume_slider_CreateFcn(hObject, eventdata, handles)
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+% --- Executes on button press in AddSong.
+function AddSong_Callback(hObject, eventdata, handles)
+[filename,pathname] = uigetfile({'*.wav'}, 'File Selector','MultiSelect','on');% for the multiple selection of the file with .wav extention
+if iscell(filename)%checks if file is selected or not
+     nfiles = length(filename);%gets the file with length
+     disp(nfiles);%inorder to display the selected file
+     nwavfile = cell(1,nfiles);
+     for i = 1:nfiles % display if there is multiple file selection
+         nwavfile{1,i} = fullfile(pathname, filesep, filename{1,i});
+       
+     end
+else
+     nwavfile{1,1} = fullfile(pathname, filesep, filename);
+     
+end
+handles.nwavfile = nwavfile;% adding the file in handles
+set(handles.address, 'String',handles.nwavfile)%setting the address of the file as string
+guidata(hObject,handles)
+
+
+
+
+
+
+
+
+% --- Executes on selection change in address.
+function address_Callback(hObject, eventdata, handles)
+handles.select_index = get(hObject,'Value'); % returning the selected index as value
+handles.addresses = get(hObject,'String'); % returning the selected index as string
+handles.seleted_items = handles.addresses{handles.select_index};% displaying the selected audio file in address or playlist
+[y f]=audioread(handles.seleted_items);% auid reading the selected file
+pl=audioplayer(y,f); % pl is the audio player 
+ handles.y = y';
+ handles.f = f;%adding frequency to handles
+ handles.atSample = 0;
+ handles.time_in_second  = length(y)/f; %handles the time in second
+ handles.f = f;
+ handles.pl = pl;
+ plot(y);
+guidata(hObject,handles);
+
+
+
+
+% --- Executes during object creation, after setting all properties.
+function address_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pause.
+function pause_Callback(hObject, eventdata, handles)
+set(handles.pl,'TimerFcn',{@timerCallback,handles.figure1}, 'TimerPeriod', 0.1);
+if isplaying(handles.pl)% if the audio is playing it pauses the audiofile
+    pause(handles.pl);
+else
+  resume(handles.pl);% for resuming the audio 
+end
+
+
+
+% --- Executes on button press in stop1.
+function stop1_Callback(hObject, eventdata, handles)
+stop(handles.pl);% stopping the playing song
+
+function reverb_Callback(hObject, eventdata, handles)
+select_index =handles.select_index;
+forwarding =cellstr(handles.addresses);
+handles.seleted_items = forwarding{select_index};
+f = 44100;%setting the rate to 44100
+[y f]=audioread(handles.seleted_items);
+handles.pl=audioplayer(y,f);
+left=y(:,1);
+out_left=left;
+L=10000;
+for n=L+1:length(left)%manipulation of the audio frequency for producing the reverb sound effect.
+out_left(n)=left(n)+left(n-L);%manupulating the audio 
+end
+handles.pl=audioplayer(out_left,f);% plays the manipulated audio
+play(handles.pl);
+guidata(hObject,handles);
+
+
+% --- Executes on button press in Plot.
+function Plot_Callback(hObject, eventdata, handles)
+% hObject    handle to Plot (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+select_index =handles.select_index;
+forwarding =cellstr(handles.addresses);
+handles.seleted_items = forwarding{select_index};
+[y f]=audioread(handles.seleted_items);
+set(handles.pl,'TimerFcn',{@timerCallback,handles.figure1}, 'TimerPeriod', 0.1);
+time=(0:length(y)-1)/f;
+plot(time, y)
+
+grid off
+end_time = length(y)/f;
+scan=line([0,0],[-1,1],'color','b','marker', 'o', 'linewidth', 1);
+play(handles.pl);
+tic % Starting Matlab timer
+t=toc; % Getting the time from the starting of the timer
+while t<end_time
+   set(scan, 'xdata', t*[1,1]) % Moves the line to the time indicated by t
+   drawnow % necessary to get figure updated
+   t=toc; % get the current time for the next update
+end
